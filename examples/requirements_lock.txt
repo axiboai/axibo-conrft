@@ -1,0 +1,26 @@
+# Known-good JAX ecosystem for ConRFT + the Octo fork (the jax.random.KeyArray era).
+#
+# The Octo fork uses jax.random.KeyArray, removed in JAX 0.4.24, so JAX is pinned
+# to 0.4.20. Installing serl/octo requirements with version floors pulls the
+# LATEST jax stack (flax 0.10, optax 0.2, cuDNN 9), which is incompatible. This
+# file pins the matching versions.
+#
+# INSTALL ORDER (important):
+#   1) GPU JAX first (brings jaxlib 0.4.20+cuda11):
+#        pip install "jax[cuda11_pip]==0.4.20" \
+#          -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+#   2) Then pin the rest (also undoes the cuDNN-9 pull):
+#        pip install -r examples/requirements_lock.txt
+#   3) Verify the GPU is visible:
+#        python -c "import jax; print(jax.devices())"   # -> [cuda(id=0)]
+
+jax==0.4.20
+# jaxlib 0.4.20+cuda11 comes from the jax[cuda11_pip] line above (do NOT pip
+# install jaxlib from PyPI here or you'll get a CPU build).
+nvidia-cudnn-cu11==8.9.6.50   # major 8 (libcudnn.so.8); cuDNN 9 breaks jaxlib 0.4.20
+flax==0.8.2                   # 0.8.0-0.8.3 require only jax>=0.4.19; 0.8.4+ needs 0.4.27
+optax==0.1.7
+chex==0.1.85
+distrax==0.1.5
+orbax-checkpoint==0.4.4
+numpy<2                       # NumPy 2.x segfaults the jax/tensorstore stack

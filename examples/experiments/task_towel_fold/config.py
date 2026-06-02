@@ -9,9 +9,10 @@ from serl_launcher.networks.reward_classifier import load_classifier_func
 
 from experiments.config import DefaultTrainingConfig
 from experiments.task_towel_fold.piperx_env import PiperXEnv, PiperXEnvConfig
-from experiments.task_towel_fold.wrapper import PiperXIntervention
-
-from franka_env.envs.wrappers import MultiCameraBinaryRewardClassifierWrapper
+from experiments.task_towel_fold.wrapper import (
+    PiperXIntervention,
+    MultiCameraBinaryRewardClassifierWrapper,
+)
 
 
 class EnvConfig(PiperXEnvConfig):

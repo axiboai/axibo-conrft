@@ -19,6 +19,15 @@ pip install --upgrade "jax[cuda11_pip]==0.4.20" \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
+> **Important:** install the Octo fork + `serl_launcher` (step 2) first, then pin
+> the JAX ecosystem with the known-good lock file — the floors in those
+> requirements otherwise pull an incompatible modern JAX/flax/cuDNN stack:
+>
+> ```bash
+> pip install -r examples/requirements_lock.txt
+> python -c "import jax; print(jax.devices())"   # expect [cuda(id=0)]
+> ```
+
 ## 2. Octo (custom fork) + serl_launcher
 
 ```bash
@@ -41,14 +50,15 @@ pip install -r examples/requirements_convert.txt
 
 ## 4. Pretrained ResNet-10 weights (REQUIRED)
 
-The reward classifier and the agent's image encoder load ImageNet-pretrained
-ResNet-10 weights. The code expects the file at `examples/resnet10_params.pkl`
-(referenced as `../resnet10_params.pkl` from a task folder):
+The reward classifier loads ImageNet-pretrained ResNet-10 weights as
+`../resnet10_params.pkl` **relative to the task folder** (since you run the
+classifier from `examples/experiments/task_towel_fold/`). So the file must live
+at `examples/experiments/resnet10_params.pkl`:
 
 ```bash
-cd examples
+cd examples/experiments
 wget https://github.com/rail-berkeley/serl/releases/download/resnet10/resnet10_params.pkl
-cd ..
+cd ../..
 ```
 
 ## 5. Octo-small model
@@ -126,6 +136,6 @@ bash run_actor_conrft.sh     # terminal 2 (robot host)
 | Octo fork (`cccedric/octo`) | `pip install -e .` | embeddings + actor encoder |
 | `serl_launcher` | `pip install -e .` | all training |
 | `av`, `pyarrow`, `opencv-python`, `huggingface_hub` | `requirements_convert.txt` | data conversion |
-| `resnet10_params.pkl` | `examples/` | classifier + encoder |
+| `resnet10_params.pkl` | `examples/experiments/` | classifier + encoder |
 | `octo-small` model | `octo_path` in config | embeddings + actor |
 | PiperX server + teleop | you provide | Stage II only |
