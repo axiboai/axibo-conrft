@@ -1,0 +1,6 @@
+# Extra dependencies for convert_lerobot_to_conrft.py (LeRobot -> ConRFT pickles).
+# These are NOT needed for training itself, only for the data-conversion step.
+av>=11.0.0            # decode the AV1-encoded LeRobot mp4 videos
+pyarrow>=14.0.0       # read LeRobot parquet (observation.state / action)
+opencv-python>=4.8.0  # resize frames
+huggingface_hub>=0.23.0  # download dataset files from the Hub
