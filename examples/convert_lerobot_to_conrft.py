@@ -316,7 +316,7 @@ def convert_classifier(_):
     successes, failures = [], []
 
     for ep in range(total):
-        states, _, primary_frames, wrist_frames = _read_episode(
+        states, actions, primary_frames, wrist_frames = _read_episode(
             FLAGS.repo_id, info, ep, FLAGS.primary_cam, FLAGS.wrist_cam,
             FLAGS.primary_size, FLAGS.wrist_size)
         n = len(states)
@@ -326,24 +326,37 @@ def convert_classifier(_):
 
         # The reward classifier runs on the wrapped env's stacked observations
         # (stack_obs_num=2), so repeat each frame across the horizon to match.
-        def obs_at(t):
-            single = _make_obs(states[t], primary_frames[t], wrist_frames[t])
-            stacked = {k: np.stack([single[k]] * FLAGS.obs_horizon, axis=0)
-                       for k in single}
-            return dict(observations=stacked)
+        # Keep full transition keys so ReplayBuffer.insert works in
+        # train_reward_classifier.py.
+        def transition_at(t):
+            t_next = min(t + 1, n - 1)
+            cur = _make_obs(states[t], primary_frames[t], wrist_frames[t])
+            nxt = _make_obs(states[t_next], primary_frames[t_next], wrist_frames[t_next])
+            stacked_cur = {k: np.stack([cur[k]] * FLAGS.obs_horizon, axis=0)
+                           for k in cur}
+            stacked_next = {k: np.stack([nxt[k]] * FLAGS.obs_horizon, axis=0)
+                            for k in nxt}
+            return dict(
+                observations=stacked_cur,
+                actions=actions[t].astype(np.float32),
+                next_observations=stacked_next,
+                rewards=0.0,
+                masks=1.0,
+                dones=False,
+            )
 
         if is_success.get(ep, False):
             k = FLAGS.success_tail_frames
             tail = idxs[-k:] if k else idxs
             head = idxs[:-k] if k else []
             for t in tail:
-                successes.append(obs_at(t))
+                successes.append(transition_at(t))
             # earlier (not-yet-folded) frames of a success are still negatives
             for t in head[::FLAGS.neg_stride]:
-                failures.append(obs_at(t))
+                failures.append(transition_at(t))
         else:
             for t in idxs[::FLAGS.neg_stride]:
-                failures.append(obs_at(t))
+                failures.append(transition_at(t))
         print(f"[classifier] episode {ep} success={is_success.get(ep, False)} "
               f"pos={len(successes)} neg={len(failures)}")
 
