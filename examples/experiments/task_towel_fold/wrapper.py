@@ -110,11 +110,18 @@ class PiperXIntervention(gym.ActionWrapper):
                 pass
 
     def action(self, action: np.ndarray) -> np.ndarray:
-        expert_a = self.get_teleop_action()
-        if expert_a is not None:
-            expert_a = np.asarray(expert_a, dtype=np.float32)
+        expert_abs = self.get_teleop_action()
+        if expert_abs is not None:
+            # Teleop stream provides absolute leader joint commands, while the
+            # policy/env action space here is normalized deltas in [-1, 1].
+            expert_abs = np.asarray(expert_abs, dtype=np.float32)
+            curr = np.asarray(self.env.unwrapped.currpos, dtype=np.float32)
+            scale = np.asarray(self.env.unwrapped.config.ACTION_SCALE, dtype=np.float32)
+            safe_scale = np.where(np.abs(scale) < 1e-6, 1.0, scale)
+            expert_a = (expert_abs - curr) / safe_scale
+            expert_a = np.clip(expert_a, -1.0, 1.0)
             if self.action_indices is not None:
-                filtered = action.copy()
+                filtered = np.asarray(action, dtype=np.float32).copy()
                 filtered[self.action_indices] = expert_a[self.action_indices]
                 expert_a = filtered
             self.intervened = True

@@ -21,8 +21,8 @@ class EnvConfig(PiperXEnvConfig):
     STATE_ADDR = "tcp://localhost:3335"
     TARGET_ADDR = "tcp://0.0.0.0:3336"
     CAMERAS = {
-        # side_policy_256 can be set to left wrist if running wrist-only policy.
-        "side_policy_256": "tcp://localhost:5560",  # cam_front
+        # Default to wrist+wrist to match the current converted demos.
+        "side_policy_256": "tcp://localhost:5556",  # cam_left_wrist
         "wrist_1": "tcp://localhost:5558",          # cam_right_wrist
     }
     IMAGE_CROP = {}
