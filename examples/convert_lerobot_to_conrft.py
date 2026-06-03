@@ -95,6 +95,18 @@ flags.DEFINE_string("task_desc", "pick towel from pile, fold and stack",
                     "Language task used to build Octo task embeddings.")
 flags.DEFINE_integer("episodes_per_file", 0,
                      "If >0, shard demo output into files of this many episodes.")
+flags.DEFINE_float(
+    "joint_delta_scale",
+    0.05,
+    "Scale used to convert absolute joint targets to normalized delta actions "
+    "for policy training: a = (q_target - q_state) / scale.",
+)
+flags.DEFINE_float(
+    "gripper_delta_scale",
+    0.02,
+    "Scale used for the two gripper dimensions (indices 6 and 13) when "
+    "converting to normalized delta actions.",
+)
 
 # classifier-only flags
 flags.DEFINE_integer("success_tail_frames", 10,
@@ -197,6 +209,20 @@ def _stack(frame_deque):
     return {k: np.stack([f[k] for f in frame_deque], axis=0) for k in keys}
 
 
+def _to_normalized_delta_action(curr_state, absolute_target):
+    """Convert absolute joint targets to normalized delta action in [-1, 1]."""
+    curr_state = np.asarray(curr_state, dtype=np.float32)
+    absolute_target = np.asarray(absolute_target, dtype=np.float32)
+    scale = np.full_like(curr_state, FLAGS.joint_delta_scale, dtype=np.float32)
+    # PiperX convention: index 6 and 13 are grippers.
+    if scale.shape[0] >= 14:
+        scale[6] = FLAGS.gripper_delta_scale
+        scale[13] = FLAGS.gripper_delta_scale
+    scale = np.where(np.abs(scale) < 1e-6, 1.0, scale)
+    normalized = (absolute_target - curr_state) / scale
+    return np.clip(normalized, -1.0, 1.0).astype(np.float32)
+
+
 def convert_demos(_):
     info = _download_json(FLAGS.repo_id, "meta/info.json")
     fps = info["fps"]
@@ -263,7 +289,7 @@ def convert_demos(_):
             reward = FLAGS.reward_pos if done else FLAGS.reward_neg
             transition = dict(
                 observations=_stack(obs_deque),
-                actions=actions[t].astype(np.float32),
+                actions=_to_normalized_delta_action(states[t], actions[t]),
                 next_observations=_stack(next_deque),
                 rewards=float(reward),
                 masks=1.0 - float(done),
