@@ -54,6 +54,11 @@ class TrainConfig(DefaultTrainingConfig):
     classifier_threshold = 0.9
     task_desc = "pick towel from pile, fold and stack"
     octo_path = "/root/online_rl/octo_model/octo-small"
+    # Rollout safety/debug: policy outputs are clipped then scaled before
+    # env.step. This only affects autonomous policy actions; teleop intervention
+    # actions still override in the wrapper.
+    policy_action_clip = 0.5
+    policy_action_scale = 0.25
 
     def get_environment(self, fake_env=False, save_video=False, classifier=False, stack_obs_num=1):
         env = PiperXEnv(fake_env=fake_env, save_video=save_video, config=EnvConfig())

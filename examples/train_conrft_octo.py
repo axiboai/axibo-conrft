@@ -166,6 +166,9 @@ def actor(tasks, agent, data_store, intvn_data_store, env, sampling_rng):
     intervention_count = 0
     intervention_steps = 0
     trajectory = []
+    # Debug counters for rollout action saturation.
+    sat_count = 0
+    action_count = 0
 
     pbar = tqdm.tqdm(range(start_step, config.max_steps), dynamic_ncols=True)
     for step in pbar:
@@ -183,6 +186,21 @@ def actor(tasks, agent, data_store, intvn_data_store, env, sampling_rng):
                     argmax=False,
                 )
                 actions = np.asarray(jax.device_get(actions))
+                # Safety controls for autonomous rollout: clip and scale policy
+                # outputs before they reach the env. Intervention actions can
+                # still override inside the wrapper.
+                clip = float(getattr(config, "policy_action_clip", 1.0))
+                scale = float(getattr(config, "policy_action_scale", 1.0))
+                sat_count += int(np.sum(np.abs(actions) >= 0.95))
+                action_count += int(np.size(actions))
+                actions = np.clip(actions, -clip, clip) * scale
+                if step % 100 == 0 and action_count > 0:
+                    print_green(
+                        f"policy action stats @step {step}: "
+                        f"sat_ratio={sat_count/action_count:.3f}, "
+                        f"clip={clip:.2f}, scale={scale:.2f}, "
+                        f"post_max={np.max(np.abs(actions)):.3f}"
+                    )
 
         # Step environment
         with timer.context("step_env"):
