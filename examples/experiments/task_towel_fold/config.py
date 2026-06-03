@@ -28,7 +28,12 @@ class EnvConfig(PiperXEnvConfig):
     IMAGE_CROP = {}
     # Home configuration the robot resets to (absolute joint targets, 14-D).
     RESET_JOINTS = np.zeros((14,), dtype=np.float32)
-    ACTION_SCALE = np.full((14,), 0.05, dtype=np.float32)
+    # Must match demo action normalization in convert_lerobot_to_conrft.py:
+    # joints use 0.05, grippers (idx 6, 13) use 0.02.
+    ACTION_SCALE = np.array([
+        0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.02,
+        0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.02,
+    ], dtype=np.float32)
     JOINT_LIMIT_LOW = np.full((14,), -np.pi, dtype=np.float32)
     JOINT_LIMIT_HIGH = np.full((14,), np.pi, dtype=np.float32)
     DISPLAY_IMAGE = True
@@ -58,7 +63,7 @@ class TrainConfig(DefaultTrainingConfig):
     # env.step. This only affects autonomous policy actions; teleop intervention
     # actions still override in the wrapper.
     policy_action_clip = 0.5
-    policy_action_scale = 0.25
+    policy_action_scale = 0.2
 
     def get_environment(self, fake_env=False, save_video=False, classifier=False, stack_obs_num=1):
         env = PiperXEnv(fake_env=fake_env, save_video=save_video, config=EnvConfig())
