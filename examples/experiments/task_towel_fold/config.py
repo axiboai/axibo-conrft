@@ -16,10 +16,14 @@ from experiments.task_towel_fold.wrapper import (
 
 
 class EnvConfig(PiperXEnvConfig):
+    # Legacy HTTP URL (unused in ZMQ mode).
     SERVER_URL = "http://127.0.0.1:5000/"
+    STATE_ADDR = "tcp://localhost:3335"
+    TARGET_ADDR = "tcp://0.0.0.0:3336"
     CAMERAS = {
-        "side_policy_256": {"index": 0},
-        "wrist_1": {"index": 1},
+        # side_policy_256 can be set to left wrist if running wrist-only policy.
+        "side_policy_256": "tcp://localhost:5560",  # cam_front
+        "wrist_1": "tcp://localhost:5558",          # cam_right_wrist
     }
     IMAGE_CROP = {}
     # Home configuration the robot resets to (absolute joint targets, 14-D).

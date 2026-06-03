@@ -49,13 +49,65 @@ class PiperXIntervention(gym.ActionWrapper):
     actor loop routes the transition into the demo/intervention buffer.
     """
 
-    def __init__(self, env, action_indices=None):
+    def __init__(self, env, action_indices=None, use_keyboard_toggle=True):
         super().__init__(env)
         self.action_indices = action_indices
+        self.intervention_enabled = False
+        self._listener = None
+        if use_keyboard_toggle:
+            try:
+                from pynput import keyboard
+
+                def on_press(key):
+                    try:
+                        if getattr(key, "char", None) == "i":
+                            self.intervention_enabled = not self.intervention_enabled
+                            print(
+                                f"[intervention] {'ENABLED' if self.intervention_enabled else 'DISABLED'}"
+                            )
+                    except Exception:
+                        pass
+
+                self._listener = keyboard.Listener(on_press=on_press)
+                self._listener.start()
+            except Exception:
+                # Keyboard toggle is optional; interventions can still be wired
+                # externally by setting intervention_enabled.
+                self._listener = None
+
+    def _pack_leader_command_14(self, state_msg):
+        left = state_msg["leader_left"]
+        right = state_msg["leader_right"]
+        out = np.zeros((14,), dtype=np.float32)
+        out[:6] = np.asarray(left["q"][:6], dtype=np.float32)
+        out[6] = float(left["gripper"])
+        out[7:13] = np.asarray(right["q"][:6], dtype=np.float32)
+        out[13] = float(right["gripper"])
+        return out
 
     def get_teleop_action(self):
-        # TODO(piperx): return a 14-D np.ndarray from your teleop device, or None.
-        return None
+        if not self.intervention_enabled:
+            return None
+        state_msg = getattr(self.env.unwrapped, "latest_state_msg", None)
+        if state_msg is None:
+            return None
+        try:
+            return self._pack_leader_command_14(state_msg)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def close(self):
+        if self._listener is not None:
+            self._listener.stop()
+        if hasattr(self.env, "close"):
+            self.env.close()
+
+    def __del__(self):
+        if self._listener is not None:
+            try:
+                self._listener.stop()
+            except Exception:
+                pass
 
     def action(self, action: np.ndarray) -> np.ndarray:
         expert_a = self.get_teleop_action()
