@@ -83,6 +83,13 @@ def actor(tasks, agent, data_store, intvn_data_store, env, sampling_rng):
         success_counter = 0
         time_list = []
         episode_length_list = []
+        # Keep eval behavior aligned with autonomous rollout safety controls.
+        eval_argmax = True
+        clip = float(getattr(config, "policy_action_clip", 1.0))
+        scale = float(getattr(config, "policy_action_scale", 1.0))
+        print_green(
+            f"eval mode policy controls: argmax={eval_argmax}, clip={clip:.2f}, scale={scale:.2f}"
+        )
 
         ckpt = checkpoints.restore_checkpoint(
             FLAGS.checkpoint_path,
@@ -100,10 +107,11 @@ def actor(tasks, agent, data_store, intvn_data_store, env, sampling_rng):
                 actions, _ = agent.sample_actions(
                     observations=jax.device_put(obs),
                     tasks=jax.device_put(tasks),
-                    argmax=False,
+                    argmax=eval_argmax,
                     seed=key
                 )
                 actions = np.asarray(jax.device_get(actions))
+                actions = np.clip(actions, -clip, clip) * scale
 
                 next_obs, reward, done, truncated, info = env.step(actions)
                 obs = next_obs
