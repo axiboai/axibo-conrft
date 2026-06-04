@@ -35,9 +35,13 @@ import zmq
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--demo_path", required=True, help="Path to towel_demos_*.pkl")
+    p.add_argument("--demo_path", default=None,
+                   help="Path to towel_demos_*.pkl. Omit to skip the demo dump "
+                        "(e.g. on the rollout box, which only has live cameras).")
     p.add_argument("--ports", default="5556,5558,5560",
-                   help="Comma-separated localhost camera ports to sample.")
+                   help="Comma-separated localhost camera ports to sample. Pass "
+                        "an empty string to skip live capture (e.g. on the cloud "
+                        "VM, which only has the demo pkl).")
     p.add_argument("--host", default="localhost")
     p.add_argument("--out_dir", default="./_cam_check")
     p.add_argument("--poll_seconds", type=float, default=2.0,
@@ -112,8 +116,11 @@ def main():
     args = parse_args()
     os.makedirs(args.out_dir, exist_ok=True)
 
-    print("=== Demo (training) frames ===")
-    dump_demo_frames(args.demo_path, args.out_dir)
+    if args.demo_path:
+        print("=== Demo (training) frames ===")
+        dump_demo_frames(args.demo_path, args.out_dir)
+    else:
+        print("=== Demo dump skipped (no --demo_path) ===")
 
     print("\n=== Live camera frames ===")
     ctx = zmq.Context.instance()
